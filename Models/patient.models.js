@@ -1,12 +1,14 @@
 import mongoose from "mongoose"
+import jwt from 'jsonwebtoken';
+import bcrypt from "bcrypt"
 
-const patientdSchema = new mongoose.schema({
+const patientSchema = new mongoose.Schema({
       
     name:{
         type: String,
         required: true,
     },
-    diagonsedWith: {
+    diagonsedWith: {  
         type: String,
         required: true,
     },
@@ -31,4 +33,49 @@ const patientdSchema = new mongoose.schema({
 
 },{timestamps: true})
 
-export const Patient = mongoose.model("Patient",patientdSchema)
+patientSchema.pre("save",async function(next){
+    if(!this.isModified("password")) return next();
+
+    this.password = await bcrypt.hash(this.password, 10)
+    next();
+})
+
+patientSchema.methods.isPasswordCorrect = async function(password){
+    return await bcrypt.compare(password,this.password)
+}
+
+patientSchema.methods.generateAccessToken = function(){
+     return JsonWebTokenError.sign(
+        
+        {
+          _id: this._id,
+          age: this.age,
+          name: this.name,
+          diagonsedWith: this.diagonsedWith,
+         },
+         process.env.ACCESS_TOKEN_SECRET,
+         {
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY
+         }
+    )
+    
+}
+patientSchema.methods.generateRefreshToken = function(){
+    return  JsonWebTokenError.sign(
+        
+        {
+          _id: this._id,
+          age: this.age,
+          name: this.name,
+          diagonsedWith: this.diagonsedWith,
+         },
+         process.env.REFRESH_TOKEN_SECRET,
+         {
+            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+         }
+    )
+    
+}
+
+
+export const Patient = mongoose.model("Patient",patientSchema)
